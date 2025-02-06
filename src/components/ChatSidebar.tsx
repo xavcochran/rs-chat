@@ -6,14 +6,26 @@ import { createChat, setCurrentChat, deleteChat } from '@/store/chatSlice';
 import { PlusIcon, TrashIcon } from '@heroicons/react/24/outline';
 import { useTheme } from 'next-themes';
 import { SunIcon, MoonIcon } from '@heroicons/react/24/solid';
+import { apiService } from '@/services/api';
 
 export default function ChatSidebar() {
   const dispatch = useDispatch();
   const { chats, currentChatId } = useSelector((state: RootState) => state.chat);
   const { theme, setTheme } = useTheme();
+  const { isAuthenticated, userId } = useSelector((state: RootState) => state.user);
 
-  const handleNewChat = () => {
-    dispatch(createChat());
+  const handleNewChat = async () => {
+    
+    
+    // Create chat in backend if user is authenticated
+    if (isAuthenticated && userId) {
+      try {
+        const chatId = await apiService.createChat(userId, 'New Chat');
+        dispatch(createChat({chatId: chatId}));
+      } catch (error) {
+        console.error('Error creating chat in backend:', error);
+      }
+    }
   };
 
   const handleChatSelect = (chatId: string) => {

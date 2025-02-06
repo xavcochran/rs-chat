@@ -53,8 +53,9 @@ class ApiService {
         });
     }
 
-    async createChat(chatName: string): Promise<string> {
+    async createChat(cognitoId: string, chatName: string): Promise<string> {
         return this.callApi<string>('/create_chat', {
+            cognito_id: cognitoId,
             chat_name: chatName,
         });
     }
@@ -76,6 +77,7 @@ class ApiService {
     }
 
     async getChatsAndMessages(cognitoId: string): Promise<ChatsAndMessages> {
+        // alert(cognitoId);
         return this.callApi<ChatsAndMessages>('/get_chats_and_messages', {
             cognito_id: cognitoId,
         });

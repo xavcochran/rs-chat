@@ -2,7 +2,7 @@ export interface Message {
   id: string;
   content: string;
   role: 'user' | 'assistant';
-  timestamp: number;
+  created_at: string;  // RFC3339 timestamp
   parsedContent?: string[];
   codeBlocks?: {
     code: string;
@@ -14,8 +14,8 @@ export interface Chat {
   id: string;
   title: string;
   messages: Message[];
-  createdAt: number;
-  updatedAt: number;
+  createdAt: string;  // RFC3339 timestamp
+  updatedAt: string;  // RFC3339 timestamp
 }
 
 export interface ChatState {

@@ -7,6 +7,7 @@ import {
   updateChatTitle,
   setChats,
   setCurrentChat,
+  createChat,
 } from "@/store/chatSlice";
 import {
   PaperAirplaneIcon,
@@ -299,12 +300,13 @@ export default function ChatInterface() {
     if (!input.trim() || !currentChatId || !userId) return;
 
     const chatTitle = currentChat?.title || 'New Chat';
+    const now = new Date().toISOString(); // RFC3339 timestamp
 
     // Create a new chat in the backend if this is the first message
     if (!currentChat) {
       try {
-        const chatId = await apiService.createChat(chatTitle);
-        dispatch(setCurrentChat(chatId));
+        const chatId = await apiService.createChat(userId, chatTitle);
+        dispatch(createChat({chatId: chatId}));
       } catch (error) {
         console.error('Error creating chat:', error);
         return;
@@ -315,6 +317,7 @@ export default function ChatInterface() {
     const newMessage = {
       content: input,
       role: "user" as const,
+      created_at: now,
     };
 
     // Add message to the chat
@@ -353,6 +356,7 @@ export default function ChatInterface() {
       const aiMessage = {
         content: response?.content || "",
         role: "assistant" as const,
+        created_at: new Date().toISOString(), // RFC3339 timestamp for AI response
       };
 
       dispatch(
@@ -388,7 +392,8 @@ export default function ChatInterface() {
         // Create a new chat with the generated title if this is the first message
         if (!currentChat) {
           try {
-            await apiService.createChat(newTitle);
+            const chatId = await apiService.createChat(userId, newTitle);
+            dispatch(createChat({chatId: chatId}));
           } catch (error) {
             console.error('Error updating chat title in backend:', error);
           }
@@ -399,6 +404,7 @@ export default function ChatInterface() {
       const errorMessage = {
         content: "Sorry, I encountered an error while processing your request. Please try again.",
         role: "assistant" as const,
+        created_at: new Date().toISOString(), // RFC3339 timestamp for error message
       };
 
       dispatch(
@@ -425,6 +431,11 @@ export default function ChatInterface() {
     }
   };
 
+  // Sort messages by created_at timestamp
+  const sortedMessages = [...messages].sort((a, b) => 
+    new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+  );
+
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
@@ -438,7 +449,7 @@ export default function ChatInterface() {
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {messages.map((message, index) => (
+        {sortedMessages.map((message, index) => (
           <div
             key={index}
             className={`flex ${

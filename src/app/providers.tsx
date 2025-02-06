@@ -40,16 +40,7 @@ function AuthCheck() {
           email: currentUser.signInDetails?.loginId || ''
         }));
 
-        // Try to ensure user exists in backend
-        try {
-          await apiService.createUser(
-            currentUser.userId,
-            currentUser.signInDetails?.loginId || ''
-          );
-        } catch (err) {
-          console.error('Error ensuring user in backend:', err);
-          // Continue anyway as the user might already exist
-        }
+
       } catch (err) {
         // User is not authenticated, which is fine
         console.log('No authenticated user');

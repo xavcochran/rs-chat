@@ -19,13 +19,14 @@ const chatSlice = createSlice({
   name: 'chat',
   initialState,
   reducers: {
-    createChat: (state) => {
+    createChat: (state, action: PayloadAction<{ chatId: string }>) => {
+      const now = new Date().toISOString();
       const newChat: Chat = {
-        id: uuidv4(),
+        id: action.payload.chatId,
         title: 'New Chat',
         messages: [],
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
+        createdAt: now,
+        updatedAt: now,
       };
       state.chats.push(newChat);
       state.currentChatId = newChat.id;
@@ -33,15 +34,14 @@ const chatSlice = createSlice({
     setCurrentChat: (state, action: PayloadAction<string>) => {
       state.currentChatId = action.payload;
     },
-    addMessage: (state, action: PayloadAction<{ chatId: string; message: Omit<Message, 'id' | 'timestamp'> }>) => {
+    addMessage: (state, action: PayloadAction<{ chatId: string; message: Omit<Message, 'id'> }>) => {
       const chat = state.chats.find(c => c.id === action.payload.chatId);
       if (chat) {
         chat.messages.push({
           ...action.payload.message,
           id: uuidv4(),
-          timestamp: Date.now(),
         });
-        chat.updatedAt = Date.now();
+        chat.updatedAt = new Date().toISOString();
       }
     },
     incrementMessageCount: (state, action: PayloadAction<{ isAuthenticated: boolean }>) => {
@@ -78,13 +78,13 @@ const chatSlice = createSlice({
         id: chatId,
         title: chatDetails.chat_name,
         messages: chatDetails.messages.map(msg => ({
-          id: uuidv4(), // Generate new IDs for messages
+          id: uuidv4(),
           content: msg.message,
           role: msg.message_type,
-          timestamp: new Date(msg.created_at).getTime(),
+          created_at: msg.created_at,
         })),
-        createdAt: new Date(chatDetails.messages[0]?.created_at || Date.now()).getTime(),
-        updatedAt: new Date(chatDetails.messages[chatDetails.messages.length - 1]?.created_at || Date.now()).getTime(),
+        createdAt: chatDetails.messages[0]?.created_at || new Date().toISOString(),
+        updatedAt: chatDetails.messages[chatDetails.messages.length - 1]?.created_at || new Date().toISOString(),
       }));
 
       // Set current chat if none is selected
