@@ -134,7 +134,7 @@ function CodeBlock({ code, language }: { code: string; language: string }) {
       </button>
       <div className="relative">
         {language !== "plaintext" && (
-          <div className="absolute top-0 left-0 px-3 py-1 text-xs text-gray-400 bg-gray-800 rounded-tr-lg">
+          <div className="absolute top-0 left-0 px-3 py-1 text-xs text-gray-400 bg-gray-2000 rounded-tl-lg">
             {language}
           </div>
         )}
@@ -142,6 +142,7 @@ function CodeBlock({ code, language }: { code: string; language: string }) {
           language={language}
           style={oneDark}
           customStyle={{
+            fontSize: "13px",
             margin: 0,
             borderRadius: "0.5rem",
             padding: "1rem",
@@ -263,6 +264,11 @@ export default function ChatInterface() {
   const dispatch = useDispatch();
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
+  const [streamingMessage, setStreamingMessage] = useState<{
+    content: string;
+    role: 'assistant';
+    created_at: string;
+  } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { chats, currentChatId } = useSelector(
     (state: RootState) => state.chat
@@ -300,7 +306,7 @@ export default function ChatInterface() {
     if (!input.trim() || !currentChatId || !userId) return;
 
     const chatTitle = currentChat?.title || 'New Chat';
-    const now = new Date().toISOString(); // RFC3339 timestamp
+    const now = new Date().toISOString();
 
     // Create a new chat in the backend if this is the first message
     if (!currentChat) {
@@ -350,14 +356,28 @@ export default function ChatInterface() {
       // Include all messages including the one just sent
       const allMessages = [...(currentChat?.messages || []), newMessage];
 
-      const response = await generateResponse(allMessages);
+      // Initialize streaming message
+      const streamStartTime = new Date().toISOString();
+      setStreamingMessage({
+        content: '',
+        role: 'assistant',
+        created_at: streamStartTime,
+      });
 
-      // Add AI response
+      const response = await generateResponse(allMessages, (token) => {
+        setStreamingMessage(current => 
+          current ? { ...current, content: current.content + token } : null
+        );
+      });
+
+      // Add the complete AI response
       const aiMessage = {
         content: response?.content || "",
         role: "assistant" as const,
-        created_at: new Date().toISOString(), // RFC3339 timestamp for AI response
+        created_at: streamStartTime,
       };
+
+      setStreamingMessage(null);
 
       dispatch(
         addMessage({
@@ -382,6 +402,8 @@ export default function ChatInterface() {
       // Generate a new title after the second message in the chat
       if (allMessages.length === 1) {
         const newTitle = await generateChatTitle([...allMessages, aiMessage]);
+        
+        // Update chat title in Redux
         dispatch(
           updateChatTitle({
             chatId: currentChatId,
@@ -389,14 +411,11 @@ export default function ChatInterface() {
           })
         );
 
-        // Create a new chat with the generated title if this is the first message
-        if (!currentChat) {
-          try {
-            const chatId = await apiService.createChat(userId, newTitle);
-            dispatch(createChat({chatId: chatId}));
-          } catch (error) {
-            console.error('Error updating chat title in backend:', error);
-          }
+        // Update chat title in backend with separate API call
+        try {
+          await apiService.updateChatName(currentChatId, newTitle);
+        } catch (error) {
+          console.error('Error updating chat title in backend:', error);
         }
       }
     } catch (error) {
@@ -404,8 +423,10 @@ export default function ChatInterface() {
       const errorMessage = {
         content: "Sorry, I encountered an error while processing your request. Please try again.",
         role: "assistant" as const,
-        created_at: new Date().toISOString(), // RFC3339 timestamp for error message
+        created_at: new Date().toISOString(),
       };
+
+      setStreamingMessage(null);
 
       dispatch(
         addMessage({
@@ -436,6 +457,11 @@ export default function ChatInterface() {
     new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
   );
 
+  // Combine regular messages with streaming message
+  const allMessages = streamingMessage 
+    ? [...sortedMessages, streamingMessage]
+    : sortedMessages;
+
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
@@ -449,7 +475,7 @@ export default function ChatInterface() {
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {sortedMessages.map((message, index) => (
+        {allMessages.map((message, index) => (
           <div
             key={index}
             className={`flex ${
@@ -467,7 +493,7 @@ export default function ChatInterface() {
             </div>
           </div>
         ))}
-        {isTyping && (
+        {isTyping && !streamingMessage && (
           <div className="flex justify-start">
             <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg">
               <div className="flex space-x-2">

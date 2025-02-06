@@ -60,6 +60,13 @@ class ApiService {
         });
     }
 
+    async updateChatName(chatId: string, newName: string): Promise<void> {
+        return this.callApi<void>('/update_chat_name', {
+            chat_id: chatId,
+            chat_name: newName,
+        });
+    }
+
     async addMessage(
         cognitoId: string,
         chatId: string,
@@ -77,7 +84,6 @@ class ApiService {
     }
 
     async getChatsAndMessages(cognitoId: string): Promise<ChatsAndMessages> {
-        // alert(cognitoId);
         return this.callApi<ChatsAndMessages>('/get_chats_and_messages', {
             cognito_id: cognitoId,
         });

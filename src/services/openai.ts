@@ -6,7 +6,10 @@ const openai = new OpenAI({
   dangerouslyAllowBrowser: true, // Note: In production, you should proxy these requests through your backend
 });
 
-export async function generateResponse(messages: { role: string; content: string }[]) {
+export async function generateResponse(
+  messages: { role: string; content: string }[],
+  onToken?: (token: string) => void
+) {
   try {
     const response = await openai.chat.completions.create({
       model: openaiConfig.model,
@@ -20,11 +23,19 @@ export async function generateResponse(messages: { role: string; content: string
           content: msg.content,
         }))
       ],
+      stream: true
     });
 
+    let fullContent = '';
+    for await (const chunk of response) {
+      const content = chunk.choices[0]?.delta?.content || '';
+      fullContent += content;
+      onToken?.(content);
+    }
+
     return {
-      content: response.choices[0].message.content,
-      usage: response.usage,
+      content: fullContent,
+      usage: null, // Usage is not available in streaming mode
     };
   } catch (error) {
     console.error('OpenAI API error:', error);

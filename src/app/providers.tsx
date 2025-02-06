@@ -4,7 +4,7 @@ import { ThemeProvider } from 'next-themes';
 import { Provider } from 'react-redux';
 import { store } from '@/store/store';
 import { useEffect } from 'react';
-import { getCurrentUser } from 'aws-amplify/auth';
+import { getCurrentUser, fetchAuthSession } from 'aws-amplify/auth';
 import { setUser } from '@/store/userSlice';
 import { apiService } from '@/services/api';
 import { Amplify } from 'aws-amplify';
@@ -33,17 +33,43 @@ function AuthCheck() {
   useEffect(() => {
     const checkAuth = async () => {
       try {
+        // First check if we have a valid session
+        const session = await fetchAuthSession();
+        if (!session.tokens) {
+          console.log('No valid auth session');
+          return;
+        }
+
+        // Get the current user details
         const currentUser = await getCurrentUser();
-        // User is authenticated, set their info in Redux
+        const userEmail = currentUser.signInDetails?.loginId;
+        
+        if (!userEmail) {
+          console.error('User authenticated but email not found');
+          return;
+        }
+
+        // Set user info in Redux
         store.dispatch(setUser({
           userId: currentUser.userId,
-          email: currentUser.signInDetails?.loginId || ''
+          email: userEmail
         }));
 
+        // Ensure user exists in backend
+        try {
+          await apiService.createUser(
+            currentUser.userId,
+            userEmail
+          );
+          console.log('User verified in backend');
+        } catch (err) {
+          // Log error but don't fail - user might already exist
+          console.log('Note: User might already exist in backend:', err);
+        }
 
       } catch (err) {
-        // User is not authenticated, which is fine
-        console.log('No authenticated user');
+        // User is not authenticated
+        console.log('No authenticated user:', err);
       }
     };
 

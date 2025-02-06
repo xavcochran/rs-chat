@@ -28,7 +28,7 @@ const chatSlice = createSlice({
         createdAt: now,
         updatedAt: now,
       };
-      state.chats.push(newChat);
+      state.chats.unshift(newChat);
       state.currentChatId = newChat.id;
     },
     setCurrentChat: (state, action: PayloadAction<string>) => {
@@ -73,19 +73,21 @@ const chatSlice = createSlice({
       }
     },
     setChats: (state, action: PayloadAction<ChatsAndMessages>) => {
-      // Convert the ChatsAndMessages format to our Chat format
-      state.chats = Object.entries(action.payload).map(([chatId, chatDetails]) => ({
-        id: chatId,
-        title: chatDetails.chat_name,
-        messages: chatDetails.messages.map(msg => ({
-          id: uuidv4(),
-          content: msg.message,
-          role: msg.message_type,
-          created_at: msg.created_at,
-        })),
-        createdAt: chatDetails.messages[0]?.created_at || new Date().toISOString(),
-        updatedAt: chatDetails.messages[chatDetails.messages.length - 1]?.created_at || new Date().toISOString(),
-      }));
+      // Convert the ChatsAndMessages format to our Chat format and sort by newest first
+      state.chats = Object.entries(action.payload)
+        .map(([chatId, chatDetails]) => ({
+          id: chatId,
+          title: chatDetails.chat_name,
+          messages: chatDetails.messages.map(msg => ({
+            id: uuidv4(),
+            content: msg.message,
+            role: msg.message_type,
+            created_at: msg.created_at,
+          })),
+          createdAt: chatDetails.messages[0]?.created_at || new Date().toISOString(),
+          updatedAt: chatDetails.messages[chatDetails.messages.length - 1]?.created_at || new Date().toISOString(),
+        }))
+        .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()); // Sort by most recently updated
 
       // Set current chat if none is selected
       if (!state.currentChatId && state.chats.length > 0) {
