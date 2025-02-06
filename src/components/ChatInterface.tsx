@@ -336,8 +336,8 @@ export default function ChatInterface() {
             <div
               className={`max-w-3xl p-4 rounded-lg font-mono ${
                 message.role === "user"
-                  ? "bg-black text-white dark:bg-white dark:text-black"
-                  : "bg-gray-100 dark:bg-gray-800"
+                  ? "bg-black text-white dark:bg-white dark:text-black mr-10"
+                  : "bg-gray-100 dark:bg-gray-800 ml-10"
               }`}
             >
               <MessageContent content={message.content} />
