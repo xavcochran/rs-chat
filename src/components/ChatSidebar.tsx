@@ -30,7 +30,7 @@ export default function ChatSidebar() {
       <div className="p-4">
         <button
           onClick={handleNewChat}
-          className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-black dark:bg-white text-white dark:text-black rounded-lg hover:opacity-90 transition-opacity font-mono"
+          className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-black dark:bg-white text-white dark:text-black rounded-lg hover:opacity-90 transition-opacity "
         >
           <PlusIcon className="h-5 w-5" />
           New Chat
@@ -46,7 +46,7 @@ export default function ChatSidebar() {
               currentChatId === chat.id ? 'bg-gray-200 dark:bg-gray-600' : ''
             }`}
           >
-            <span className="truncate font-mono">{chat.title}</span>
+            <span className="truncate">{chat.title}</span>
             <button
               onClick={(e) => handleDeleteChat(chat.id, e)}
               className="opacity-0 group-hover:opacity-100 hover:text-red-500 transition-opacity"

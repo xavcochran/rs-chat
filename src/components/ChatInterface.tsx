@@ -5,6 +5,8 @@ import {
   addMessage,
   incrementMessageCount,
   updateChatTitle,
+  setChats,
+  setCurrentChat,
 } from "@/store/chatSlice";
 import {
   PaperAirplaneIcon,
@@ -14,6 +16,7 @@ import {
 import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { oneDark } from "react-syntax-highlighter/dist/esm/styles/prism";
 import { generateResponse, generateChatTitle } from "@/services/openai";
+import { apiService } from "@/services/api";
 import AuthPrompt from "./AuthPrompt";
 import AuthModal from "./AuthPrompt";
 
@@ -116,7 +119,7 @@ function CodeBlock({ code, language }: { code: string; language: string }) {
   };
 
   return (
-    <div className="relative mt-2 group">
+    <div className="relative mt-4 mb-4 group">
       <button
         onClick={handleCopy}
         className="absolute right-2 top-2 p-2 rounded-lg bg-gray-700 text-white opacity-0 group-hover:opacity-100 transition-opacity z-10"
@@ -130,7 +133,7 @@ function CodeBlock({ code, language }: { code: string; language: string }) {
       </button>
       <div className="relative">
         {language !== "plaintext" && (
-          <div className="absolute top-0 left-0 px-3 py-1 text-xs text-gray-400 bg-gray-800 rounded-bl-lg rounded-tr-lg">
+          <div className="absolute top-0 left-0 px-3 py-1 text-xs text-gray-400 bg-gray-800 rounded-tr-lg">
             {language}
           </div>
         )}
@@ -142,8 +145,7 @@ function CodeBlock({ code, language }: { code: string; language: string }) {
             borderRadius: "0.5rem",
             padding: "1rem",
             paddingTop: "2rem",
-            fontFamily:
-              'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+            fontFamily: "var(--font-mono)",
           }}
           wrapLongLines={true}
         >
@@ -157,8 +159,42 @@ function CodeBlock({ code, language }: { code: string; language: string }) {
 function MessageContent({ content }: { content: string }) {
   const segments = parseAIResponse(content);
 
+  const formatTextWithBullets = (text: string) => {
+    return text.split('\n').map((line, index) => {
+      // Get the indentation level from the start of the line
+      const indentMatch = line.match(/^(\s*)/);
+      const indentLevel = indentMatch ? indentMatch[1].length : 0;
+      
+      // Check if line starts with a bullet point or number
+      if (line.match(/^\s*[-*•]\s+/)) {
+        // It's a bullet point
+        return (
+          <div key={index} className="flex" style={{ paddingLeft: `${indentLevel}px` }}>
+            <span className="inline-block w-4 flex-shrink-0">{line.match(/[-*•]/)?.[0]}</span>
+            <span className="flex-1">{line.replace(/^\s*[-*•]\s+/, '')}</span>
+          </div>
+        );
+      } else if (line.match(/^\s*\d+\.\s+/)) {
+        // It's a numbered list
+        const [, number] = line.match(/^(\s*\d+)\.\s+/) || [];
+        return (
+          <div key={index} className="flex" style={{ paddingLeft: `${indentLevel}px` }}>
+            <span className="inline-block w-6 flex-shrink-0">{number?.trim()}.</span>
+            <span className="flex-1">{line.replace(/^\s*\d+\.\s+/, '')}</span>
+          </div>
+        );
+      }
+      // Regular line - preserve its indentation
+      return (
+        <div key={index} style={{ paddingLeft: `${indentLevel}px` }}>
+          {line.trimLeft()}
+        </div>
+      );
+    });
+  };
+
   return (
-    <div className="space-y-4 font-mono">
+    <div className="space-y-4">
       {segments.map((segment, index) => {
         if (segment.type === "code") {
           return (
@@ -170,8 +206,8 @@ function MessageContent({ content }: { content: string }) {
           );
         }
         return (
-          <div key={index} className="whitespace-pre-wrap">
-            {segment.content}
+          <div key={index} className="leading-relaxed space-y-1">
+            {formatTextWithBullets(segment.content)}
           </div>
         );
       })}
@@ -187,7 +223,7 @@ function UserAvatar({ email }: { email?: string }) {
       <>
         <button
           onClick={() => setShowAuth(true)}
-          className="px-4 py-2 bg-black dark:bg-white text-white dark:text-black rounded-lg hover:opacity-90 transition-opacity font-mono text-sm"
+          className="px-4 py-2 bg-black dark:bg-white text-white dark:text-black rounded-lg hover:opacity-90 transition-opacity text-sm"
         >
           Login
         </button>
@@ -230,10 +266,25 @@ export default function ChatInterface() {
   const { chats, currentChatId } = useSelector(
     (state: RootState) => state.chat
   );
-  const { isAuthenticated } = useSelector((state: RootState) => state.user);
+  const { isAuthenticated, userId } = useSelector((state: RootState) => state.user);
 
   const currentChat = chats.find((chat) => chat.id === currentChatId);
   const messages = currentChat?.messages || [];
+
+  // Load user's chats on authentication
+  useEffect(() => {
+    const loadChats = async () => {
+      if (isAuthenticated && userId) {
+        try {
+          const chatsAndMessages = await apiService.getChatsAndMessages(userId);
+          dispatch(setChats(chatsAndMessages));
+        } catch (error) {
+          console.error('Error loading chats:', error);
+        }
+      }
+    };
+    loadChats();
+  }, [isAuthenticated, userId, dispatch]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -245,7 +296,20 @@ export default function ChatInterface() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim() || !currentChatId) return;
+    if (!input.trim() || !currentChatId || !userId) return;
+
+    const chatTitle = currentChat?.title || 'New Chat';
+
+    // Create a new chat in the backend if this is the first message
+    if (!currentChat) {
+      try {
+        const chatId = await apiService.createChat(chatTitle);
+        dispatch(setCurrentChat(chatId));
+      } catch (error) {
+        console.error('Error creating chat:', error);
+        return;
+      }
+    }
 
     // Create the new message
     const newMessage = {
@@ -260,6 +324,19 @@ export default function ChatInterface() {
         message: newMessage,
       })
     );
+
+    // Add message to backend
+    try {
+      await apiService.addMessage(
+        userId,
+        currentChatId,
+        chatTitle,
+        'user',
+        input
+      );
+    } catch (error) {
+      console.error('Error adding message to backend:', error);
+    }
 
     dispatch(incrementMessageCount({ isAuthenticated }));
 
@@ -285,9 +362,21 @@ export default function ChatInterface() {
         })
       );
 
+      // Add AI message to backend
+      try {
+        await apiService.addMessage(
+          userId,
+          currentChatId,
+          chatTitle,
+          'assistant',
+          aiMessage.content
+        );
+      } catch (error) {
+        console.error('Error adding AI message to backend:', error);
+      }
+
       // Generate a new title after the second message in the chat
       if (allMessages.length === 1) {
-        // Changed from 2 to 1 since we want to do it after first exchange
         const newTitle = await generateChatTitle([...allMessages, aiMessage]);
         dispatch(
           updateChatTitle({
@@ -295,19 +384,42 @@ export default function ChatInterface() {
             title: newTitle,
           })
         );
+
+        // Create a new chat with the generated title if this is the first message
+        if (!currentChat) {
+          try {
+            await apiService.createChat(newTitle);
+          } catch (error) {
+            console.error('Error updating chat title in backend:', error);
+          }
+        }
       }
     } catch (error) {
       console.error("Error:", error);
+      const errorMessage = {
+        content: "Sorry, I encountered an error while processing your request. Please try again.",
+        role: "assistant" as const,
+      };
+
       dispatch(
         addMessage({
           chatId: currentChatId,
-          message: {
-            content:
-              "Sorry, I encountered an error while processing your request. Please try again.",
-            role: "assistant",
-          },
+          message: errorMessage,
         })
       );
+
+      // Add error message to backend
+      try {
+        await apiService.addMessage(
+          userId,
+          currentChatId,
+          chatTitle,
+          'assistant',
+          errorMessage.content
+        );
+      } catch (error) {
+        console.error('Error adding error message to backend:', error);
+      }
     } finally {
       setIsTyping(false);
     }
@@ -317,7 +429,7 @@ export default function ChatInterface() {
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
         <div className="w-10" /> {/* Spacer to center the title */}
-        <h1 className="text-xl font-mono font-semibold truncate max-w-lg">
+        <h1 className="text-xl font-medium truncate max-w-lg">
           {currentChat?.title || "New Chat"}
         </h1>
         <UserAvatar
@@ -334,7 +446,7 @@ export default function ChatInterface() {
             }`}
           >
             <div
-              className={`max-w-3xl p-4 rounded-lg font-mono ${
+              className={`max-w-3xl p-4 rounded-lg ${
                 message.role === "user"
                   ? "bg-black text-white dark:bg-white dark:text-black mr-10"
                   : "bg-gray-100 dark:bg-gray-800 ml-10"
@@ -368,7 +480,7 @@ export default function ChatInterface() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="Ask about Rust programming..."
-            className="flex-1 p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 font-mono focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white"
+            className="flex-1 p-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white"
           />
           <button
             type="submit"

@@ -1,6 +1,7 @@
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { ChatState, Message, Chat } from '../types/chat';
 import { v4 as uuidv4 } from 'uuid';
+import { ChatsAndMessages } from '@/services/api';
 
 const initialState: ChatState = {
   chats: [],
@@ -71,6 +72,26 @@ const chatSlice = createSlice({
         chat.title = action.payload.title;
       }
     },
+    setChats: (state, action: PayloadAction<ChatsAndMessages>) => {
+      // Convert the ChatsAndMessages format to our Chat format
+      state.chats = Object.entries(action.payload).map(([chatId, chatDetails]) => ({
+        id: chatId,
+        title: chatDetails.chat_name,
+        messages: chatDetails.messages.map(msg => ({
+          id: uuidv4(), // Generate new IDs for messages
+          content: msg.message,
+          role: msg.message_type,
+          timestamp: new Date(msg.created_at).getTime(),
+        })),
+        createdAt: new Date(chatDetails.messages[0]?.created_at || Date.now()).getTime(),
+        updatedAt: new Date(chatDetails.messages[chatDetails.messages.length - 1]?.created_at || Date.now()).getTime(),
+      }));
+
+      // Set current chat if none is selected
+      if (!state.currentChatId && state.chats.length > 0) {
+        state.currentChatId = state.chats[0].id;
+      }
+    },
   },
 });
 
@@ -81,6 +102,7 @@ export const {
   incrementMessageCount,
   deleteChat,
   updateChatTitle,
+  setChats,
 } = chatSlice.actions;
 
 export default chatSlice.reducer; 

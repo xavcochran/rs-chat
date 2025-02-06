@@ -5,6 +5,7 @@ import { useDispatch } from 'react-redux';
 import { setUser } from '@/store/userSlice';
 import { useState, useEffect } from 'react';
 import { XMarkIcon } from '@heroicons/react/24/solid';
+import { apiService } from '@/services/api';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -53,6 +54,15 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
         await confirmSignUp({ username: email, confirmationCode: verificationCode });
         await signIn({ username: email, password });
         const currentUser = await getCurrentUser();
+        
+        // Create user in backend after successful signup
+        try {
+          await apiService.createUser(currentUser.userId, email);
+        } catch (err) {
+          console.error('Error creating user in backend:', err);
+          // Continue anyway as the user is authenticated in Cognito
+        }
+        
         dispatch(setUser({ userId: currentUser.userId, email }));
         onClose();
       } else if (isSignUp) {
