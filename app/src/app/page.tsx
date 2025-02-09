@@ -11,7 +11,7 @@ export default function Home() {
   const { messageCount, currentChatId } = useSelector((state: RootState) => state.chat);
   const { isAuthenticated } = useSelector((state: RootState) => state.user);
 
-  const shouldShowAuthPrompt = !isAuthenticated && messageCount.anonymous >= 10;
+  const shouldShowAuthPrompt = !isAuthenticated || messageCount.anonymous >= 10;
 
   return (
     <main className="flex h-screen bg-white dark:bg-gray-900">

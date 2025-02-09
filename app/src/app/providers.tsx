@@ -39,6 +39,7 @@ function AuthCheck() {
           console.log('No valid auth session');
           return;
         }
+        
 
         // Get the current user details
         const currentUser = await getCurrentUser();
@@ -68,6 +69,7 @@ function AuthCheck() {
         // }
 
       } catch (err) {
+        alert('Session found');
         // User is not authenticated
         console.log('No authenticated user:', err);
       }
