@@ -1,13 +1,13 @@
 # Rust AI Chat Assistant
 
-A modern web application for getting help with Rust programming through AI assistance. Built with Next.js, TypeScript, and AWS Cognito authentication.
+A modern web application for getting help with Rust programming through AI assistance. Built with Next.js, TypeScript, and HelixDB.
 
 ## Features
 
 - 🤖 AI-powered Rust programming assistance
 - 🔐 AWS Cognito authentication
 - 🌓 Dark/Light mode support
-- 💻 Code syntax highlighting with Monaco Editor
+- 💻 Code syntax highlighting
 - 📱 Responsive design
 - 🌳 Chat history with tree structure
 - ⚡ Real-time responses
@@ -44,11 +44,6 @@ NEXT_PUBLIC_OPENAI_API_KEY=your_openai_api_key
 
 3. Open [http://localhost:3000](http://localhost:3000) with your browser.
 
-## Usage Limits
-
-- Anonymous users: 10 messages
-- Authenticated users: 30 messages per hour
-
 ## Deployment
 
 The application is configured for deployment on Vercel. Simply connect your GitHub repository to Vercel and it will handle the rest.
@@ -57,37 +52,25 @@ Make sure to add the environment variables in your Vercel project settings.
 
 ## Tech Stack
 
-- Next.js 14
 - TypeScript
+- Next.js 14
 - Redux Toolkit
-- AWS Amplify
+- Tailwind 
+- AWS Amplify & Cognito
 - OpenAI API
-- Monaco Editor
-- Tailwind CSS
-- next-themes
+- HelixDB
 
-## Development
 
 ### File Structure
 
 ```
-src/
-  ├── app/              # Next.js app directory
-  ├── components/       # React components
-  ├── config/          # Configuration files
-  ├── services/        # API services
-  ├── store/           # Redux store and slices
-  └── types/           # TypeScript types
+app/
+└── src/
+      ├── app/              # Next.js app directory
+      ├── components/       # React components
+      ├── config/          # Configuration files
+      ├── services/        # API services
+      ├── store/           # Redux store and slices
+      └── types/           # TypeScript types
 ```
 
-### Contributing
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add some amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
