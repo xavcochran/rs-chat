@@ -1,0 +1,23 @@
+{
+  "name": "rust-rag-backend",
+  "version": "1.0.0",
+  "description": "Backend for Rust documentation RAG system",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "ts-node src/index.ts",
+    "index-docs": "ts-node src/scripts/indexDocs.ts"
+  },
+  "dependencies": {
+    "axios": "^1.6.7",
+    "cheerio": "^1.0.0-rc.12",
+    "dotenv": "^16.4.1",
+    "openai": "^4.26.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.16",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.3.3"
+  }
+} 

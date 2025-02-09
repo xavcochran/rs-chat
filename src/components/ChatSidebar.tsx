@@ -34,7 +34,15 @@ export default function ChatSidebar() {
 
   const handleDeleteChat = (chatId: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    dispatch(deleteChat(chatId));
+    const handleDelete = async () => {
+      try {
+        await apiService.deleteChat(chatId);
+        dispatch(deleteChat(chatId));
+      } catch (error) {
+        console.error('Error deleting chat in backend:', error);
+      }
+    }
+    handleDelete();
   };
 
   return (

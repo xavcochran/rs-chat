@@ -56,16 +56,16 @@ function AuthCheck() {
         }));
 
         // Ensure user exists in backend
-        try {
-          await apiService.createUser(
-            currentUser.userId,
-            userEmail
-          );
-          console.log('User verified in backend');
-        } catch (err) {
-          // Log error but don't fail - user might already exist
-          console.log('Note: User might already exist in backend:', err);
-        }
+        // try {
+        //   await apiService.createUser(
+        //     currentUser.userId,
+        //     userEmail
+        //   );
+        //   console.log('User verified in backend');
+        // } catch (err) {
+        //   // Log error but don't fail - user might already exist
+        //   console.log('Note: User might already exist in backend:', err);
+        // }
 
       } catch (err) {
         // User is not authenticated

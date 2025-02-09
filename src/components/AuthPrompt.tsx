@@ -54,7 +54,6 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
         await confirmSignUp({ username: email, confirmationCode: verificationCode });
         await signIn({ username: email, password });
         const currentUser = await getCurrentUser();
-        
         // Create user in backend after successful signup
         try {
           await apiService.createUser(currentUser.userId, email);

@@ -88,6 +88,12 @@ class ApiService {
             cognito_id: cognitoId,
         });
     }
+
+    async deleteChat(chatId: string): Promise<void> {
+        return this.callApi<void>('/delete_chat', {
+            chat_id: chatId,
+        });
+    }
 }
 
 export const apiService = new ApiService(); 

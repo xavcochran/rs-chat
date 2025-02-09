@@ -302,17 +302,22 @@ export default function ChatInterface() {
   }, [messages]);
 
   const handleSubmit = async (e: React.FormEvent) => {
+    let tempChatId = "";
     e.preventDefault();
-    if (!input.trim() || !currentChatId || !userId) return;
+    if (!input.trim() || !userId) return;
 
     const chatTitle = currentChat?.title || 'New Chat';
     const now = new Date().toISOString();
+
+    setIsTyping(true);
+    setStreamingMessage(null);
 
     // Create a new chat in the backend if this is the first message
     if (!currentChat) {
       try {
         const chatId = await apiService.createChat(userId, chatTitle);
         dispatch(createChat({chatId: chatId}));
+        tempChatId = chatId;
       } catch (error) {
         console.error('Error creating chat:', error);
         return;
@@ -325,11 +330,14 @@ export default function ChatInterface() {
       role: "user" as const,
       created_at: now,
     };
-
+    if (!currentChatId && !tempChatId) {
+      console.error('No chat ID found');
+      return;
+    }
     // Add message to the chat
     dispatch(
       addMessage({
-        chatId: currentChatId,
+        chatId: currentChatId || tempChatId,
         message: newMessage,
       })
     );
@@ -338,7 +346,7 @@ export default function ChatInterface() {
     try {
       await apiService.addMessage(
         userId,
-        currentChatId,
+        currentChatId || tempChatId,
         chatTitle,
         'user',
         input
@@ -350,7 +358,6 @@ export default function ChatInterface() {
     dispatch(incrementMessageCount({ isAuthenticated }));
 
     setInput("");
-    setIsTyping(true);
 
     try {
       // Include all messages including the one just sent
@@ -381,7 +388,7 @@ export default function ChatInterface() {
 
       dispatch(
         addMessage({
-          chatId: currentChatId,
+          chatId: currentChatId || tempChatId,
           message: aiMessage,
         })
       );
@@ -390,7 +397,7 @@ export default function ChatInterface() {
       try {
         await apiService.addMessage(
           userId,
-          currentChatId,
+          currentChatId || tempChatId,
           chatTitle,
           'assistant',
           aiMessage.content
@@ -406,14 +413,14 @@ export default function ChatInterface() {
         // Update chat title in Redux
         dispatch(
           updateChatTitle({
-            chatId: currentChatId,
+            chatId: currentChatId || tempChatId,
             title: newTitle,
           })
         );
 
         // Update chat title in backend with separate API call
         try {
-          await apiService.updateChatName(currentChatId, newTitle);
+          await apiService.updateChatName(currentChatId || tempChatId, newTitle);
         } catch (error) {
           console.error('Error updating chat title in backend:', error);
         }
@@ -430,7 +437,7 @@ export default function ChatInterface() {
 
       dispatch(
         addMessage({
-          chatId: currentChatId,
+          chatId: currentChatId || tempChatId,
           message: errorMessage,
         })
       );
@@ -439,7 +446,7 @@ export default function ChatInterface() {
       try {
         await apiService.addMessage(
           userId,
-          currentChatId,
+          currentChatId || tempChatId,
           chatTitle,
           'assistant',
           errorMessage.content
@@ -462,6 +469,7 @@ export default function ChatInterface() {
     ? [...sortedMessages, streamingMessage]
     : sortedMessages;
 
+
   return (
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
@@ -475,34 +483,45 @@ export default function ChatInterface() {
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {allMessages.map((message, index) => (
-          <div
-            key={index}
-            className={`flex ${
-              message.role === "user" ? "justify-end" : "justify-start"
-            }`}
-          >
-            <div
-              className={`max-w-3xl p-4 rounded-lg ${
-                message.role === "user"
-                  ? "bg-black text-white dark:bg-white dark:text-black mr-10"
-                  : "bg-gray-100 dark:bg-gray-800 ml-10"
-              }`}
-            >
-              <MessageContent content={message.content} />
+        {(!currentChat || (currentChat && currentChat.messages.length === 0)) ? (
+          <div className="h-full flex items-center justify-center">
+            <div className="text-center text-gray-500 dark:text-gray-400">
+              <p className="text-lg">No messages yet</p>
+              <p className="text-sm">Start a conversation by typing a message below</p>
             </div>
           </div>
-        ))}
-        {isTyping && !streamingMessage && (
-          <div className="flex justify-start">
-            <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg">
-              <div className="flex space-x-2">
-                <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" />
-                <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce delay-100" />
-                <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce delay-200" />
+        ) : (
+          <>
+            {allMessages.map((message, index) => (
+              <div
+                key={index}
+                className={`flex ${
+                  message.role === "user" ? "justify-end" : "justify-start"
+                }`}
+              >
+                <div
+                  className={`max-w-3xl p-4 rounded-lg ${
+                    message.role === "user"
+                      ? "bg-black text-white dark:bg-white dark:text-black mr-10"
+                      : "bg-gray-100 dark:bg-gray-800 ml-10"
+                  }`}
+                >
+                  <MessageContent content={message.content} />
+                </div>
               </div>
-            </div>
-          </div>
+            ))}
+            {isTyping && (streamingMessage?.content.length == 0) &&  !streamingMessage && (
+              <div className="flex justify-start">
+                <div className="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg ml-10">
+                  <div className="flex space-x-2">
+                    <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" />
+                    <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce delay-100" />
+                    <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce delay-200" />
+                  </div>
+                </div>
+              </div>
+            )}
+          </>
         )}
         <div ref={messagesEndRef} />
       </div>
